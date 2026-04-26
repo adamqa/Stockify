@@ -156,14 +156,14 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # CORS Settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5000",
-    "https://stockouadi.netlify.app",  # Your Netlify frontend
-]
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:3000",
+#     "http://localhost:5000",
+#     "https://stockouadi.netlify.app",  # Your Netlify frontend
+# ]
 
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
