@@ -130,12 +130,6 @@ DATABASES = {
     }
 }
 
-# Debug: Print database settings (remove after testing)
-print(f"Connecting to: {DATABASES['default']['HOST']}:{DATABASES['default']['PORT']}")
-print(f"Database: {DATABASES['default']['NAME']}")
-print(f"User: {DATABASES['default']['USER']}")
-
-
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
@@ -156,14 +150,14 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # CORS Settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5000",
-    "https://stockouadi.netlify.app",  # Your Netlify frontend
-]
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:3000",
+#     "http://localhost:5000",
+#     "https://stockouadi.netlify.app",  # Your Netlify frontend
+# ]
 
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
