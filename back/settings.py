@@ -10,7 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
-import dj_database_url
+# import dj_database_url
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
@@ -38,6 +38,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
+    '.railway.app',
     'stockify-production-fa9c.up.railway.app',
 ]
 
@@ -116,12 +117,23 @@ WSGI_APPLICATION = 'back.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get("DATABASE_URL"),  # Pass the ENV VAR NAME, not the URL
-        conn_max_age=600,
-        ssl_require=True
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'railway',
+        'USER': 'postgres',
+        'PASSWORD': 'UPNijAanmkeeUVscCrHPAumcTiRokwfh',
+        'HOST': 'gondola.proxy.rlwy.net',
+        'PORT': '16639',
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
+    }
 }
+
+# Debug: Print database settings (remove after testing)
+print(f"Connecting to: {DATABASES['default']['HOST']}:{DATABASES['default']['PORT']}")
+print(f"Database: {DATABASES['default']['NAME']}")
+print(f"User: {DATABASES['default']['USER']}")
 
 
 # Password validation
