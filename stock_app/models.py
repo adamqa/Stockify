@@ -248,7 +248,15 @@ class Mouvement_Entree(models.Model):
     date_entree = models.DateField()
     type_entree = models.CharField(max_length=50, choices=TYPE_ENTREE_CHOICES)
     documents_reglementaires = models.CharField(max_length=100, blank=True, null=True)
-
+    id_responsable = models.ForeignKey(
+        Utilisateur, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='entrees_effectuees'
+    )
+    reference_facture = models.CharField(max_length=100, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
     class Meta:
         pass
 
@@ -271,6 +279,15 @@ class Mouvement_Sortie(models.Model):
     quantite_sortie = models.IntegerField()
     type_sortie = models.CharField(max_length=50, choices=TYPE_SORTIE_CHOICES)
     valeur_sortie = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    id_responsable = models.ForeignKey(
+        Utilisateur, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='sorties_effectuees'
+    )
+    motif = models.CharField(max_length=200, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
 
     def clean(self):
         """Validation de la quantité disponible"""
@@ -341,6 +358,15 @@ class Mouvement_Sortie_externe(models.Model):
     type_sortie = models.CharField(max_length=50, choices=TYPE_SORTIE_CHOICES)
     documents_reglementaires = models.CharField(max_length=100, blank=True, null=True)
     valeur_sortie = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    id_responsable = models.ForeignKey(
+        Utilisateur, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='sorties_externes_effectuees'
+    )
+    client_nom = models.CharField(max_length=200, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
 
     def clean(self):
         """Validation de la quantité disponible"""
@@ -392,6 +418,22 @@ class Mouvement_Sortie_externe(models.Model):
 
     def __str__(self):
         return f"Sortie Externe {self.id_sortie_externe} - {self.id_article.nom_article}"
+
+
+class HistoriqueEmplacement(models.Model):
+    id_historique = models.AutoField(primary_key=True)
+    emplacement = models.ForeignKey(Emplacement, on_delete=models.CASCADE, related_name='historique')
+    article = models.ForeignKey(Article, on_delete=models.CASCADE)
+    date_debut = models.DateTimeField(auto_now_add=True)
+    date_fin = models.DateTimeField(null=True, blank=True)
+    est_actif = models.BooleanField(default=True)
+    
+    class Meta:
+        db_table = 'historique_emplacement'
+        ordering = ['-date_debut']
+    
+    def __str__(self):
+        return f"{self.article.nom_article} -> {self.emplacement.zone_physique} (début: {self.date_debut})"
 
 class Inventaire(models.Model):
     id_inventaire = models.AutoField(primary_key=True)
@@ -750,3 +792,4 @@ class Comptage(models.Model):
 
     def __str__(self):
         return f"Comptage {self.id_comptage}"
+

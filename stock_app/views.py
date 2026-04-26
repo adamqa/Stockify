@@ -14,7 +14,7 @@ from .models import (
     Utilisateur, Article, Lot, Emplacement, Mouvement_Entree,
     Mouvement_Sortie, Mouvement_Sortie_externe, Inventaire,
     Comptage, Depreciation, HistoriqueAction, AlerteAutomatique,
-    Fournisseur, CommandeFournisseur
+    Fournisseur, CommandeFournisseur, HistoriqueEmplacement
 )
 from .serializers import (
     UtilisateurSerializer, LoginSerializer, RegisterSerializer,
@@ -23,7 +23,8 @@ from .serializers import (
     MouvementSortieSerializer, MouvementSortieExterneSerializer,
     InventaireSerializer, ComptageSerializer, DepreciationSerializer,
     HistoriqueActionSerializer, AlerteAutomatiqueSerializer,
-    FournisseurSerializer, CommandeFournisseurSerializer
+    FournisseurSerializer, CommandeFournisseurSerializer,
+    HistoriqueEmplacementSerializer
 )
 from .permissions import IsResponsableMagasin
 
@@ -226,15 +227,24 @@ class MouvementEntreeViewSet(viewsets.ModelViewSet):
     serializer_class = MouvementEntreeSerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_create(self, serializer):
+        serializer.save(id_responsable=self.request.user)
+
 class MouvementSortieViewSet(viewsets.ModelViewSet):
     queryset = Mouvement_Sortie.objects.all().order_by('-date_sortie')
     serializer_class = MouvementSortieSerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_create(self, serializer):
+        serializer.save(id_responsable=self.request.user)
+
 class MouvementSortieExterneViewSet(viewsets.ModelViewSet):
     queryset = Mouvement_Sortie_externe.objects.all().order_by('-date_sortie')
     serializer_class = MouvementSortieExterneSerializer
     permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(id_responsable=self.request.user)
 
 # ========== INVENTORY VIEWS ==========
 class InventaireViewSet(viewsets.ModelViewSet):
@@ -604,6 +614,20 @@ class CommandeFournisseurViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(commandes, many=True)
         return Response(serializer.data)
 
+class HistoriqueEmplacementViewSet(viewsets.ModelViewSet):
+    queryset = HistoriqueEmplacement.objects.all()
+    serializer_class = HistoriqueEmplacementSerializer
+    permission_classes = [IsAuthenticated]
+    
+    @action(detail=False, methods=['get'])
+    def par_article(self, request):
+        article_id = request.query_params.get('article_id')
+        if article_id:
+            historique = HistoriqueEmplacement.objects.filter(article_id=article_id)
+            serializer = self.get_serializer(historique, many=True)
+            return Response(serializer.data)
+        return Response([])
+
 
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
@@ -611,3 +635,4 @@ class CurrentUserView(APIView):
     def get(self, request):
         serializer = UtilisateurSerializer(request.user)
         return Response(serializer.data)
+

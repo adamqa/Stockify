@@ -4,3 +4,6 @@ class StockAppConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'stock_app'
     verbose_name = 'Gestion de Stock'
+
+    def ready(self):
+        import stock_app.signals

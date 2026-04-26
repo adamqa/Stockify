@@ -4,7 +4,7 @@ from .models import (
     Utilisateur, Article, Lot, Emplacement, Mouvement_Entree,
     Mouvement_Sortie, Mouvement_Sortie_externe, Inventaire,
     Comptage, Depreciation, Historique_Classification_ABC,
-    HistoriqueAction, AlerteAutomatique,Fournisseur, CommandeFournisseur
+    HistoriqueAction, AlerteAutomatique,Fournisseur, CommandeFournisseur,HistoriqueEmplacement
 )
 
 class UtilisateurSerializer(serializers.ModelSerializer):
@@ -144,6 +144,7 @@ class EmplacementSerializer(serializers.ModelSerializer):
 class MouvementEntreeSerializer(serializers.ModelSerializer):
     article_nom = serializers.CharField(source='id_article.nom_article', read_only=True)
     lot_info = serializers.CharField(source='id_lot.id_lot', read_only=True)
+    responsable_nom = serializers.CharField(source='id_responsable.username', read_only=True)
 
     class Meta:
         model = Mouvement_Entree
@@ -153,6 +154,7 @@ class MouvementSortieSerializer(serializers.ModelSerializer):
     article_nom = serializers.CharField(source='id_article.nom_article', read_only=True)
     lot_info = serializers.CharField(source='id_lot.id_lot', read_only=True)
     type_sortie_display = serializers.CharField(source='get_type_sortie_display', read_only=True)
+    responsable_nom = serializers.CharField(source='id_responsable.username', read_only=True)
 
     class Meta:
         model = Mouvement_Sortie
@@ -161,6 +163,8 @@ class MouvementSortieSerializer(serializers.ModelSerializer):
 class MouvementSortieExterneSerializer(serializers.ModelSerializer):
     article_nom = serializers.CharField(source='id_article.nom_article', read_only=True)
     lot_info = serializers.CharField(source='id_lot.id_lot', read_only=True)
+    responsable_nom = serializers.CharField(source='id_responsable.username', read_only=True)
+
 
     class Meta:
         model = Mouvement_Sortie_externe
@@ -278,3 +282,26 @@ class CommandeFournisseurSerializer(serializers.ModelSerializer):
     class Meta:
         model = CommandeFournisseur
         fields = '__all__'
+
+# In serializers.py
+
+class HistoriqueEmplacementSerializer(serializers.ModelSerializer):
+    # Optional: Add readable fields for better API responses
+    emplacement_zone = serializers.CharField(source='emplacement.zone_physique', read_only=True)
+    article_nom = serializers.CharField(source='article.nom_article', read_only=True)
+    article_code = serializers.CharField(source='article.code_article', read_only=True)
+    
+    class Meta:
+        model = HistoriqueEmplacement
+        fields = [
+            'id_historique',
+            'emplacement',
+            'emplacement_zone',  # Human-readable zone name
+            'article',
+            'article_nom',       # Human-readable article name
+            'article_code',      # Human-readable article code
+            'date_debut',
+            'date_fin',
+            'est_actif',
+        ]
+        read_only_fields = ['id_historique', 'date_debut', 'est_actif']
