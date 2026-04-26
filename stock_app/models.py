@@ -346,7 +346,6 @@ class Mouvement_Sortie(models.Model):
 class Mouvement_Sortie_externe(models.Model):
     TYPE_SORTIE_CHOICES = [
         ('vente', 'vente'),
-        ('transfert', 'transfert'),
         ('consommation', 'consommation'),
     ]
 
@@ -367,59 +366,7 @@ class Mouvement_Sortie_externe(models.Model):
     )
     client_nom = models.CharField(max_length=200, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
-
-    def clean(self):
-        """Validation de la quantité disponible"""
-        if self.pk:  # Si l'objet existe déjà
-            original = Mouvement_Sortie_externe.objects.get(pk=self.pk)
-            quantite_utilisee = original.quantite_sortie
-        else:
-            quantite_utilisee = 0
-
-        quantite_disponible = self.id_lot.quantite_restante + quantite_utilisee
-
-        if self.quantite_sortie > quantite_disponible:
-            raise ValidationError(
-                f"Quantité insuffisante dans le lot. Disponible: {quantite_disponible}"
-            )
-
-    def save(self, *args, **kwargs):
-        # Calculer la valeur de sortie
-        if not self.valeur_sortie and self.quantite_sortie > 0:
-            from .methodes_valorisation import GestionnaireValorisation
-            try:
-                self.valeur_sortie = GestionnaireValorisation.calculer_cout_sortie(
-                    self.id_article, self.quantite_sortie
-                )
-            except:
-                # Fallback si la valorisation échoue
-                self.valeur_sortie = self.quantite_sortie * self.id_article.prix_unitaire
-        super().save(*args, **kwargs)
-        # Gérer la mise à jour de la quantité restante
-        if self.pk:
-            # Si modification, restaurer l'ancienne quantité d'abord
-            original = Mouvement_Sortie_externe.objects.get(pk=self.pk)
-            self.id_lot.quantite_restante += original.quantite_sortie
-
-        # Soustraire la nouvelle quantité
-        self.id_lot.quantite_restante -= self.quantite_sortie
-        self.id_lot.save()
-
-
-
-    def delete(self, *args, **kwargs):
-        # Restaurer la quantité restante si suppression
-        self.id_lot.quantite_restante += self.quantite_sortie
-        self.id_lot.save()
-        super().delete(*args, **kwargs)
-
-    class Meta:
-        pass
-
-    def __str__(self):
-        return f"Sortie Externe {self.id_sortie_externe} - {self.id_article.nom_article}"
-
-
+    
 class HistoriqueEmplacement(models.Model):
     id_historique = models.AutoField(primary_key=True)
     emplacement = models.ForeignKey(Emplacement, on_delete=models.CASCADE, related_name='historique')

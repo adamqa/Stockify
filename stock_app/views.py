@@ -308,19 +308,31 @@ class MouvementSortieViewSet(viewsets.ModelViewSet):
             'type_sortie': instance.type_sortie
         })
 
+# views.py - Corrigez ce ViewSet
+
 class MouvementSortieExterneViewSet(viewsets.ModelViewSet):
     queryset = Mouvement_Sortie_externe.objects.all().order_by('-date_sortie')
     serializer_class = MouvementSortieExterneSerializer
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        instance = serializer.save(id_responsable=self.request.user)
-        self.log_action(self.request, instance, 'CREATE', {
-            'article': instance.id_article.nom_article,
-            'quantite': instance.quantite_sortie,
-            'type_sortie': instance.type_sortie,
-            'client': instance.client_nom or 'N/A'
-        })
+        try:
+            # Récupérez les données validées
+            quantite_sortie = serializer.validated_data.get('quantite_sortie', 0)
+            id_lot = serializer.validated_data.get('id_lot')
+            
+            # Vérifiez la quantité disponible
+            if id_lot and quantite_sortie > id_lot.quantite_restante:
+                raise serializers.ValidationError({
+                    'quantite_sortie': f'Quantité insuffisante. Disponible: {id_lot.quantite_restante}'
+                })
+            
+            # Sauvegardez avec le responsable
+            serializer.save(id_responsable=self.request.user)
+            
+        except Exception as e:
+            print(f"Erreur dans MouvementSortieExterneViewSet: {str(e)}")
+            raise serializers.ValidationError({"error": str(e)})
 
 # ========== INVENTORY VIEWS ==========
 class InventaireViewSet(viewsets.ModelViewSet):
@@ -329,22 +341,29 @@ class InventaireViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def perform_create(self, serializer):
-        article = serializer.validated_data['article']
-        quantite_theorique = article.quantite_stock_actuel()
-        quantite_reelle = serializer.validated_data['quantite_reelle']
-        
-        instance = serializer.save(
-            responsable=self.request.user,
-            quantite_theorique=quantite_theorique,
-            ecart=quantite_reelle - quantite_theorique
-        )
-        
-        self.log_action(self.request, instance, 'CREATE', {
-            'article': article.nom_article,
-            'quantite_theorique': quantite_theorique,
-            'quantite_reelle': quantite_reelle,
-            'ecart': quantite_reelle - quantite_theorique
-        })
+        try:
+            article = serializer.validated_data.get('article')
+            quantite_reelle = serializer.validated_data.get('quantite_reelle', 0)
+            
+            # Vérifiez que l'article existe
+            if not article:
+                raise serializers.ValidationError({"article": "L'article est requis"})
+            
+            # Calculez la quantité théorique
+            quantite_theorique = article.quantite_stock_actuel()
+            
+            # Calculez l'écart
+            ecart = quantite_reelle - quantite_theorique
+            
+            # Sauvegardez avec toutes les données
+            serializer.save(
+                responsable=self.request.user,
+                quantite_theorique=quantite_theorique,
+                ecart=ecart
+            )
+        except Exception as e:
+            print(f"Erreur dans perform_create: {str(e)}")
+            raise serializers.ValidationError({"error": str(e)})
 
 
 class ComptageViewSet(viewsets.ModelViewSet):
