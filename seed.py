@@ -13,7 +13,7 @@ import django
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 import random
-import json
+import json 
 
 # Configuration - MODIFIER SELON VOTRE PROJET
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
