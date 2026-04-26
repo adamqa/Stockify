@@ -27,6 +27,7 @@ from .serializers import (
     HistoriqueEmplacementSerializer
 )
 from .permissions import IsResponsableMagasin
+from .mixins import AuditTrailMixin
 
 # ========== AUTHENTICATION VIEWS ==========
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -180,6 +181,19 @@ class ArticleViewSet(viewsets.ModelViewSet):
     serializer_class = ArticleSerializer
     permission_classes = [IsAuthenticated]
     
+    def get_create_details(self, instance):
+        return {
+            'nom_article': instance.nom_article,
+            'famille': instance.famille,
+            'prix_unitaire': str(instance.prix_unitaire)
+        }
+    
+    def get_delete_details(self, instance):
+        return {
+            'nom_article': instance.nom_article,
+            'id_article': instance.id_article
+        }
+
     @action(detail=False, methods=['get'])
     def low_stock(self, request):
         articles = []
@@ -207,6 +221,20 @@ class LotViewSet(viewsets.ModelViewSet):
     queryset = Lot.objects.all().order_by('-date_entree')
     serializer_class = LotSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_create_details(self, instance):
+        return {
+            'article': instance.id_article.nom_article,
+            'quantite': instance.quantite_lot,
+            'cout_unitaire': str(instance.cout_unitaire)
+        }
+    
+    def get_delete_details(self, instance):
+        return {
+            'article': instance.id_article.nom_article,
+            'quantite': instance.quantite_lot
+        }
+
     
     def get_queryset(self):
         queryset = Lot.objects.all()
@@ -221,6 +249,13 @@ class EmplacementViewSet(viewsets.ModelViewSet):
     serializer_class = EmplacementSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_create_details(self, instance):
+        return {
+            'zone': instance.zone_physique,
+            'rack': instance.rack,
+            'etagere': instance.etagere
+        }
+
 # ========== MOVEMENT VIEWS ==========
 class MouvementEntreeViewSet(viewsets.ModelViewSet):
     queryset = Mouvement_Entree.objects.all().order_by('-date_entree')
@@ -228,7 +263,12 @@ class MouvementEntreeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(id_responsable=self.request.user)
+        instance = serializer.save(id_responsable=self.request.user)
+        self.log_action(self.request, instance, 'CREATE', {
+            'article': instance.id_article.nom_article,
+            'type_entree': instance.type_entree,
+            'date': str(instance.date_entree)
+        })
 
 class MouvementSortieViewSet(viewsets.ModelViewSet):
     queryset = Mouvement_Sortie.objects.all().order_by('-date_sortie')
@@ -236,7 +276,12 @@ class MouvementSortieViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(id_responsable=self.request.user)
+        instance = serializer.save(id_responsable=self.request.user)
+        self.log_action(self.request, instance, 'CREATE', {
+            'article': instance.id_article.nom_article,
+            'quantite': instance.quantite_sortie,
+            'type_sortie': instance.type_sortie
+        })
 
 class MouvementSortieExterneViewSet(viewsets.ModelViewSet):
     queryset = Mouvement_Sortie_externe.objects.all().order_by('-date_sortie')
@@ -244,7 +289,13 @@ class MouvementSortieExterneViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(id_responsable=self.request.user)
+        instance = serializer.save(id_responsable=self.request.user)
+        self.log_action(self.request, instance, 'CREATE', {
+            'article': instance.id_article.nom_article,
+            'quantite': instance.quantite_sortie,
+            'type_sortie': instance.type_sortie,
+            'client': instance.client_nom or 'N/A'
+        })
 
 # ========== INVENTORY VIEWS ==========
 class InventaireViewSet(viewsets.ModelViewSet):
@@ -257,11 +308,20 @@ class InventaireViewSet(viewsets.ModelViewSet):
         quantite_theorique = article.quantite_stock_actuel()
         quantite_reelle = serializer.validated_data['quantite_reelle']
         
-        serializer.save(
-            responsable=self.request.user,  # ← Définit automatiquement l'utilisateur connecté
+        instance = serializer.save(
+            responsable=self.request.user,
             quantite_theorique=quantite_theorique,
             ecart=quantite_reelle - quantite_theorique
         )
+        
+        self.log_action(self.request, instance, 'CREATE', {
+            'article': article.nom_article,
+            'quantite_theorique': quantite_theorique,
+            'quantite_reelle': quantite_reelle,
+            'ecart': quantite_reelle - quantite_theorique
+        })
+
+
 class ComptageViewSet(viewsets.ModelViewSet):
     queryset = Comptage.objects.all()
     serializer_class = ComptageSerializer
@@ -561,6 +621,13 @@ class FournisseurViewSet(viewsets.ModelViewSet):
     serializer_class = FournisseurSerializer
     permission_classes = [IsAuthenticated]
     
+    def get_create_details(self, instance):
+        return {
+            'nom': instance.nom,
+            'code': instance.code,
+            'categorie': instance.categorie
+        }
+
     @action(detail=False, methods=['get'])
     def stats(self, request):
         total = Fournisseur.objects.count()
@@ -604,6 +671,13 @@ class CommandeFournisseurViewSet(viewsets.ModelViewSet):
     serializer_class = CommandeFournisseurSerializer
     permission_classes = [IsAuthenticated]
     
+    def get_create_details(self, instance):
+        return {
+            'fournisseur': instance.fournisseur.nom,
+            'montant': str(instance.montant_total),
+            'statut': instance.statut
+        }
+
     @action(detail=False, methods=['get'])
     def by_fournisseur(self, request):
         fournisseur_id = request.query_params.get('fournisseur_id')

@@ -792,3 +792,4 @@ class Comptage(models.Model):
     def __str__(self):
         return f"Comptage {self.id_comptage}"
 
+
