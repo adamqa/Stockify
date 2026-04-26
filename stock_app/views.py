@@ -29,6 +29,31 @@ from .serializers import (
 from .permissions import IsResponsableMagasin
 from .mixins import AuditTrailMixin
 
+
+
+class HistoriqueActionViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = HistoriqueAction.objects.all().order_by('-date_action')
+    serializer_class = HistoriqueActionSerializer
+    permission_classes = [IsAuthenticated]
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Statistiques des actions"""
+        from datetime import datetime, timedelta
+        from django.db.models import Count
+        
+        today = datetime.now().date()
+        week_ago = today - timedelta(days=7)
+        
+        stats = {
+            'total_actions': HistoriqueAction.objects.count(),
+            'actions_semaine': HistoriqueAction.objects.filter(date_action__date__gte=week_ago).count(),
+            'par_type': list(HistoriqueAction.objects.values('type_action').annotate(count=Count('id'))),
+            'par_table': list(HistoriqueAction.objects.values('table_affectee').annotate(count=Count('id'))),
+            'par_utilisateur': list(HistoriqueAction.objects.values('utilisateur').annotate(count=Count('id'))[:10]),
+        }
+        return Response(stats)
+
 # ========== AUTHENTICATION VIEWS ==========
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
