@@ -33,7 +33,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure--h1rv_!=9z)likfs)8f2l645l%w-ienzgho95lc6mj6u%)h0k6'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -156,14 +156,14 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # CORS Settings
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:3000",
-#     "http://localhost:5000",
-#     "https://stockouadi.netlify.app",  # Your Netlify frontend
-# ]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5000",
+    "https://stockouadi.netlify.app",  # Your Netlify frontend
+]
 
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
