@@ -37,7 +37,7 @@ DEBUG = False
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    'adamqadiri.pythonanywhere.com',  # Your PythonAnywhere domain
+    'stockify-production-fa9c.up.railway.app',
 ]
 
 
@@ -173,7 +173,7 @@ CORS_ALLOW_HEADERS = [
 
 CSRF_TRUSTED_ORIGINS = [
     'https://stockouadi.netlify.app',
-    'https://adamqadiri.pythonanywhere.com',
+    'stockify-production-fa9c.up.railway.app',
 ]
 
 # REST Framework
