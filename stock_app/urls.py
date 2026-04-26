@@ -16,7 +16,7 @@ from .views import (
     ChartDataView, StockValueTrendView, StorageCapacityView,
     TopArticlesByMovementView, RecentActivityView,
     FournisseurViewSet, CommandeFournisseurViewSet,
-    HistoriqueEmplacementViewSet
+    HistoriqueEmplacementViewSet, HistoriqueActionViewSet
 )
 
 router = DefaultRouter()
@@ -33,6 +33,7 @@ router.register('historique', HistoriqueActionViewSet)
 router.register('fournisseurs', FournisseurViewSet)
 router.register('commandes-fournisseur', CommandeFournisseurViewSet)
 router.register('historique-emplacements', HistoriqueEmplacementViewSet)
+router.register(r'historique-actions', HistoriqueActionViewSet) 
 
 urlpatterns = [
     # Authentication

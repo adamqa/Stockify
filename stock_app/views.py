@@ -688,6 +688,44 @@ class CommandeFournisseurViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(commandes, many=True)
         return Response(serializer.data)
 
+class HistoriqueActionViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = HistoriqueAction.objects.all().order_by('-date_action')
+    serializer_class = HistoriqueActionSerializer
+    permission_classes = [IsAuthenticated]
+    
+    @action(detail=False, methods=['get'])
+    def par_utilisateur(self, request):
+        utilisateur = request.query_params.get('utilisateur')
+        if utilisateur:
+            logs = HistoriqueAction.objects.filter(utilisateur=utilisateur)
+            serializer = self.get_serializer(logs, many=True)
+            return Response(serializer.data)
+        return Response([])
+    
+    @action(detail=False, methods=['get'])
+    def par_table(self, request):
+        table = request.query_params.get('table')
+        if table:
+            logs = HistoriqueAction.objects.filter(table_affectee=table)
+            serializer = self.get_serializer(logs, many=True)
+            return Response(serializer.data)
+        return Response([])
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Statistiques des actions"""
+        today = datetime.now().date()
+        week_ago = today - timedelta(days=7)
+        
+        stats = {
+            'total_actions': HistoriqueAction.objects.count(),
+            'actions_semaine': HistoriqueAction.objects.filter(date_action__date__gte=week_ago).count(),
+            'par_type': list(HistoriqueAction.objects.values('type_action').annotate(count=Count('id'))),
+            'par_table': list(HistoriqueAction.objects.values('table_affectee').annotate(count=Count('id'))),
+            'par_utilisateur': list(HistoriqueAction.objects.values('utilisateur').annotate(count=Count('id'))[:10]),
+        }
+        return Response(stats)
+
 class HistoriqueEmplacementViewSet(viewsets.ModelViewSet):
     queryset = HistoriqueEmplacement.objects.all()
     serializer_class = HistoriqueEmplacementSerializer
