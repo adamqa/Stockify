@@ -8,7 +8,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 from django.db.models import Sum, Count, Avg, Q, F
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from calendar import month_name
 from .models import (
     Utilisateur, Article, Lot, Emplacement, Mouvement_Entree,

@@ -1,44 +1,67 @@
-# stock_app/methodes_valorisation.py
+# methodes_valorisation.py
+from django.db.models import Sum
+from .models import Lot
 
 class GestionnaireValorisation:
-    """
-    Gestionnaire de valorisation des stocks - Version simplifiée
-    """
-    
-    @classmethod
-    def calculer_cout_sortie(cls, article, quantite_sortie):
-        """
-        Calcule le coût d'une sortie utilisant le coût unitaire de l'article
+    @staticmethod
+    def calculer_cout_sortie(article, quantite):
+        """Calculate cost of outgoing movement using article's valuation method"""
+        lots = Lot.objects.filter(
+            id_article=article,
+            quantite_restante__gt=0
+        ).order_by('date_entree')  # FIFO by default
         
-        Args:
-            article: L'article concerné
-            quantite_sortie: La quantité à sortir
-        
-        Returns:
-            decimal: La valeur totale de la sortie
-        """
-        try:
-            # Utiliser le prix unitaire de l'article
-            prix_unitaire = getattr(article, 'prix_unitaire', 0)
-            if not prix_unitaire:
-                # Fallback : chercher dans les lots
-                from .models import Lot
-                premier_lot = Lot.objects.filter(
-                    id_article=article,
-                    quantite_restante__gt=0
-                ).first()
-                if premier_lot:
-                    prix_unitaire = premier_lot.cout_unitaire
-            
-            valeur = quantite_sortie * prix_unitaire
-            return valeur
-        except Exception as e:
-            print(f"Erreur lors du calcul de valorisation: {e}")
-            return 0
+        if article.methode_valorisation == 'FIFO':
+            return GestionnaireValorisation._fifo_cost(lots, quantite)
+        elif article.methode_valorisation == 'LIFO':
+            return GestionnaireValorisation._lifo_cost(lots, quantite)
+        else:  # CMP
+            return GestionnaireValorisation._cmp_cost(article, quantite)
     
-    @classmethod
-    def calculer_cout_entree(cls, lot):
-        """Calcule le coût d'une entrée"""
-        if lot and lot.cout_unitaire and lot.quantite_lot:
-            return lot.quantite_lot * lot.cout_unitaire
-        return 0
+    @staticmethod
+    def _fifo_cost(lots, quantite):
+        """Calculate cost using FIFO method"""
+        remaining = quantite
+        total_cost = 0
+        
+        for lot in lots:
+            if remaining <= 0:
+                break
+            qty_to_take = min(remaining, lot.quantite_restante)
+            total_cost += qty_to_take * lot.cout_unitaire
+            remaining -= qty_to_take
+        
+        return total_cost
+    
+    @staticmethod
+    def _lifo_cost(lots, quantite):
+        """Calculate cost using LIFO method"""
+        lots = list(lots)[::-1]  # Reverse order
+        remaining = quantite
+        total_cost = 0
+        
+        for lot in lots:
+            if remaining <= 0:
+                break
+            qty_to_take = min(remaining, lot.quantite_restante)
+            total_cost += qty_to_take * lot.cout_unitaire
+            remaining -= qty_to_take
+        
+        return total_cost
+    
+    @staticmethod
+    def _cmp_cost(article, quantite):
+        """Calculate cost using CMP (Weighted Average) method"""
+        lots = Lot.objects.filter(
+            id_article=article,
+            quantite_restante__gt=0
+        )
+        
+        total_value = sum(lot.quantite_restante * lot.cout_unitaire for lot in lots)
+        total_quantity = sum(lot.quantite_restante for lot in lots)
+        
+        if total_quantity > 0:
+            avg_cost = total_value / total_quantity
+            return quantite * avg_cost
+        
+        return quantite * article.prix_unitaire

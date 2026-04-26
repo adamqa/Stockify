@@ -283,23 +283,22 @@ class CommandeFournisseurSerializer(serializers.ModelSerializer):
         model = CommandeFournisseur
         fields = '__all__'
 
-# In serializers.py
+
 
 class HistoriqueEmplacementSerializer(serializers.ModelSerializer):
-    # Optional: Add readable fields for better API responses
     emplacement_zone = serializers.CharField(source='emplacement.zone_physique', read_only=True)
     article_nom = serializers.CharField(source='article.nom_article', read_only=True)
-    article_code = serializers.CharField(source='article.code_article', read_only=True)
+    article_id = serializers.CharField(source='article.id_article', read_only=True)  # Changed from code_article
     
     class Meta:
         model = HistoriqueEmplacement
         fields = [
             'id_historique',
             'emplacement',
-            'emplacement_zone',  # Human-readable zone name
+            'emplacement_zone',
             'article',
-            'article_nom',       # Human-readable article name
-            'article_code',      # Human-readable article code
+            'article_nom',
+            'article_id',  # Changed from article_code
             'date_debut',
             'date_fin',
             'est_actif',

@@ -548,14 +548,13 @@ class HistoriqueAction(models.Model):
     details_simplifies = models.TextField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        # Le Mixin envoie déjà le username, mais cette vérification est utile
-        if hasattr(self.utilisateur, 'username'):
+        # FIX: Check if utilisateur is a User object
+        if hasattr(self, 'utilisateur') and hasattr(self.utilisateur, 'username'):
             self.utilisateur = self.utilisateur.username
-
-        if not self.utilisateur:
+        elif not self.utilisateur or self.utilisateur == "Système":
             self.utilisateur = "Système"
 
-        # Génération des détails simplifiés si non fournis
+        # Generate simplified details if not provided
         if not self.details_simplifies:
             self.details_simplifies = self.generer_details_simplifies()
 
