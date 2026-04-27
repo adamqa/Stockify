@@ -180,7 +180,7 @@ CORS_ALLOW_HEADERS = [
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://stockouadi.netlify.app',
+    'https://st0ck1fy.netlify.app',
     'https://stockify-production-fa9c.up.railway.app',
 ]
 
