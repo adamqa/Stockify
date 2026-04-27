@@ -74,6 +74,16 @@ class LoginView(APIView):
         if serializer.is_valid():
             user = serializer.validated_data['user']
             refresh = RefreshToken.for_user(user)
+            
+            # Enregistrer la connexion dans l'historique
+            HistoriqueAction.objects.create(
+                utilisateur=user.username,
+                type_action='LOGIN',
+                table_affectee='Utilisateur',
+                id_entite_affectee=user.id,
+                details_simplifies=f"🔐 Connexion de {user.username}"
+            )
+            
             return Response({
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
@@ -104,6 +114,15 @@ class LogoutView(APIView):
     
     def post(self, request):
         try:
+            # Enregistrer la déconnexion
+            HistoriqueAction.objects.create(
+                utilisateur=request.user.username,
+                type_action='LOGOUT',
+                table_affectee='Utilisateur',
+                id_entite_affectee=request.user.id,
+                details_simplifies=f"🚪 Déconnexion de {request.user.username}"
+            )
+            
             refresh_token = request.data.get('refresh_token')
             if refresh_token:
                 token = RefreshToken(refresh_token)
@@ -206,6 +225,37 @@ class ArticleViewSet(viewsets.ModelViewSet):
     serializer_class = ArticleSerializer
     permission_classes = [IsAuthenticated]
     
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        HistoriqueAction.objects.create(
+            utilisateur=self.request.user.username,
+            type_action='CREATE',
+            table_affectee='Article',
+            id_entite_affectee=instance.id_article,
+            details_simplifies=f"➕ Création de l'article {instance.nom_article}"
+        )
+    
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        HistoriqueAction.objects.create(
+            utilisateur=self.request.user.username,
+            type_action='UPDATE',
+            table_affectee='Article',
+            id_entite_affectee=instance.id_article,
+            details_simplifies=f"✏️ Modification de l'article {instance.nom_article}"
+        )
+    
+    def perform_destroy(self, instance):
+        HistoriqueAction.objects.create(
+            utilisateur=self.request.user.username,
+            type_action='DELETE',
+            table_affectee='Article',
+            id_entite_affectee=instance.id_article,
+            details_simplifies=f"🗑️ Suppression de l'article {instance.nom_article}"
+        )
+        instance.delete()
+        
     def get_create_details(self, instance):
         return {
             'nom_article': instance.nom_article,
@@ -247,6 +297,36 @@ class LotViewSet(viewsets.ModelViewSet):
     serializer_class = LotSerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        HistoriqueAction.objects.create(
+            utilisateur=self.request.user.username,
+            type_action='CREATE',
+            table_affectee='Lot',
+            id_entite_affectee=instance.id_lot,
+            details_simplifies=f"➕ Création du lot #{instance.id_lot} - {instance.quantite_lot} unités"
+        )
+    
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        HistoriqueAction.objects.create(
+            utilisateur=self.request.user.username,
+            type_action='UPDATE',
+            table_affectee='Lot',
+            id_entite_affectee=instance.id_lot,
+            details_simplifies=f"✏️ Modification du lot #{instance.id_lot}"
+        )
+    
+    def perform_destroy(self, instance):
+        HistoriqueAction.objects.create(
+            utilisateur=self.request.user.username,
+            type_action='DELETE',
+            table_affectee='Lot',
+            id_entite_affectee=instance.id_lot,
+            details_simplifies=f"🗑️ Suppression du lot #{instance.id_lot}"
+        )
+        instance.delete()
+
     def get_create_details(self, instance):
         return {
             'article': instance.id_article.nom_article,
@@ -274,6 +354,16 @@ class EmplacementViewSet(viewsets.ModelViewSet):
     serializer_class = EmplacementSerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        HistoriqueAction.objects.create(
+            utilisateur=self.request.user.username,
+            type_action='CREATE',
+            table_affectee='Emplacement',
+            id_entite_affectee=instance.id_emplacement,
+            details_simplifies=f"➕ Création de l'emplacement Rack {instance.rack}"
+        )
+
     def get_create_details(self, instance):
         return {
             'zone': instance.zone_physique,
@@ -288,12 +378,18 @@ class MouvementEntreeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        instance = serializer.save(id_responsable=self.request.user)
-        self.log_action(self.request, instance, 'CREATE', {
-            'article': instance.id_article.nom_article,
-            'type_entree': instance.type_entree,
-            'date': str(instance.date_entree)
-        })
+        try:
+            instance = serializer.save(id_responsable=self.request.user)
+            HistoriqueAction.objects.create(
+                utilisateur=self.request.user.username,
+                type_action='CREATE',
+                table_affectee='Mouvement_Entree',
+                id_entite_affectee=instance.id_entree,
+                details_simplifies=f"📥 Entrée de stock - Article #{instance.id_article.id_article} - Type: {instance.type_entree}"
+            )
+        except Exception as e:
+            print(f"Erreur dans MouvementEntreeViewSet: {str(e)}")
+            raise
 
 class MouvementSortieViewSet(viewsets.ModelViewSet):
     queryset = Mouvement_Sortie.objects.all().order_by('-date_sortie')
@@ -301,14 +397,26 @@ class MouvementSortieViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        instance = serializer.save(id_responsable=self.request.user)
-        self.log_action(self.request, instance, 'CREATE', {
-            'article': instance.id_article.nom_article,
-            'quantite': instance.quantite_sortie,
-            'type_sortie': instance.type_sortie
-        })
-
-# views.py - Corrigez ce ViewSet
+        try:
+            quantite_sortie = serializer.validated_data.get('quantite_sortie', 0)
+            id_lot = serializer.validated_data.get('id_lot')
+            
+            if id_lot and quantite_sortie > id_lot.quantite_restante:
+                raise serializers.ValidationError({
+                    'quantite_sortie': f'Quantité insuffisante. Disponible: {id_lot.quantite_restante}'
+                })
+            
+            instance = serializer.save(id_responsable=self.request.user)
+            HistoriqueAction.objects.create(
+                utilisateur=self.request.user.username,
+                type_action='CREATE',
+                table_affectee='Mouvement_Sortie',
+                id_entite_affectee=instance.id_sortie,
+                details_simplifies=f"📤 Sortie interne - {instance.quantite_sortie} unités - Type: {instance.type_sortie}"
+            )
+        except Exception as e:
+            print(f"Erreur dans MouvementSortieViewSet: {str(e)}")
+            raise
 
 class MouvementSortieExterneViewSet(viewsets.ModelViewSet):
     queryset = Mouvement_Sortie_externe.objects.all().order_by('-date_sortie')
@@ -317,22 +425,25 @@ class MouvementSortieExterneViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         try:
-            # Récupérez les données validées
             quantite_sortie = serializer.validated_data.get('quantite_sortie', 0)
             id_lot = serializer.validated_data.get('id_lot')
             
-            # Vérifiez la quantité disponible
             if id_lot and quantite_sortie > id_lot.quantite_restante:
                 raise serializers.ValidationError({
                     'quantite_sortie': f'Quantité insuffisante. Disponible: {id_lot.quantite_restante}'
                 })
             
-            # Sauvegardez avec le responsable
-            serializer.save(id_responsable=self.request.user)
-            
+            instance = serializer.save(id_responsable=self.request.user)
+            HistoriqueAction.objects.create(
+                utilisateur=self.request.user.username,
+                type_action='CREATE',
+                table_affectee='Mouvement_Sortie_externe',
+                id_entite_affectee=instance.id_sortie_externe,
+                details_simplifies=f"💰 Vente/Sortie externe - {instance.quantite_sortie} unités - Type: {instance.type_sortie}"
+            )
         except Exception as e:
             print(f"Erreur dans MouvementSortieExterneViewSet: {str(e)}")
-            raise serializers.ValidationError({"error": str(e)})
+            raise
 
 # ========== INVENTORY VIEWS ==========
 class InventaireViewSet(viewsets.ModelViewSet):
@@ -345,25 +456,28 @@ class InventaireViewSet(viewsets.ModelViewSet):
             article = serializer.validated_data.get('article')
             quantite_reelle = serializer.validated_data.get('quantite_reelle', 0)
             
-            # Vérifiez que l'article existe
             if not article:
                 raise serializers.ValidationError({"article": "L'article est requis"})
             
-            # Calculez la quantité théorique
             quantite_theorique = article.quantite_stock_actuel()
-            
-            # Calculez l'écart
             ecart = quantite_reelle - quantite_theorique
             
-            # Sauvegardez avec toutes les données
-            serializer.save(
+            instance = serializer.save(
                 responsable=self.request.user,
                 quantite_theorique=quantite_theorique,
                 ecart=ecart
             )
+            
+            HistoriqueAction.objects.create(
+                utilisateur=self.request.user.username,
+                type_action='CREATE',
+                table_affectee='Inventaire',
+                id_entite_affectee=instance.id_inventaire,
+                details_simplifies=f"Inventaire - Article: {article.nom_article} - Écart: {ecart}"
+            )
         except Exception as e:
-            print(f"Erreur dans perform_create: {str(e)}")
-            raise serializers.ValidationError({"error": str(e)})
+            print(f"Erreur dans InventaireViewSet: {str(e)}")
+            raise
 
 
 class ComptageViewSet(viewsets.ModelViewSet):
@@ -398,9 +512,9 @@ class DepreciationViewSet(viewsets.ModelViewSet):
 
 # ========== DASHBOARD STATISTICS VIEWS ==========
 class DashboardStatsView(APIView):
-    permission_classes = [IsAuthenticated]  # 4 espaces
+    permission_classes = [IsAuthenticated]
     
-    def get(self, request):  # 4 espaces également
+    def get(self, request):
         total_articles = Article.objects.count()
         low_stock = 0
         total_value = 0
@@ -429,7 +543,7 @@ class DashboardStatsView(APIView):
             'monthly_internal': monthly_internal,
             'monthly_external': monthly_external
         })
-
+        
 class TopArticlesView(APIView):
     permission_classes = [IsAuthenticated]
     

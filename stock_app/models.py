@@ -301,41 +301,44 @@ class Mouvement_Sortie(models.Model):
             raise ValidationError(f"Quantité insuffisante dans le lot. Disponible: {quantite_disponible}")
 
     def save(self, *args, **kwargs):
-        # 🔥 CORRECTION : Gérer la modification
-        if self.pk:  # Si l'objet existe déjà (modification)
-            print(f"🔄 Modification détectée - ID: {self.pk}")
-            # Récupérer l'ancienne valeur depuis la base
-            ancien_mouvement = Mouvement_Sortie.objects.get(pk=self.pk)
-            ancienne_quantite = ancien_mouvement.quantite_sortie
-            print(f"📊 Ancienne quantité: {ancienne_quantite}, Nouvelle quantité: {self.quantite_sortie}")
+        try:
+            # Gérer la modification
+            if self.pk:
+                ancien_mouvement = Mouvement_Sortie.objects.get(pk=self.pk)
+                ancienne_quantite = ancien_mouvement.quantite_sortie
+                # RESTAURER l'ancienne quantité
+                self.id_lot.quantite_restante += ancienne_quantite
+                self.id_lot.save(update_fields=['quantite_restante'])
 
-            # RESTAURER l'ancienne quantité
-            self.id_lot.quantite_restante += ancienne_quantite
-            print(f"🔄 Quantité restaurée: {self.id_lot.quantite_restante}")
+            # CALCULER LA VALEUR DE SORTIE
+            if not self.valeur_sortie and self.quantite_sortie > 0:
+                try:
+                    from .methodes_valorisation import GestionnaireValorisation
+                    self.valeur_sortie = GestionnaireValorisation.calculer_cout_sortie(
+                        self.id_article, self.quantite_sortie
+                    )
+                except:
+                    self.valeur_sortie = self.quantite_sortie * self.id_article.prix_unitaire
 
-        # CALCULER LA VALEUR DE SORTIE
-        if not self.valeur_sortie and self.quantite_sortie > 0:
-            from .methodes_valorisation import GestionnaireValorisation
-            try:
-                self.valeur_sortie = GestionnaireValorisation.calculer_cout_sortie(
-                    self.id_article, self.quantite_sortie
-                )
-            except:
-                # Fallback si la valorisation échoue
-                self.valeur_sortie = self.quantite_sortie * self.id_article.prix_unitaire
-
-        # SOUSTRAIRE la nouvelle quantité
-        self.id_lot.quantite_restante -= self.quantite_sortie
-        self.id_lot.save()
-        print(f"✅ Nouvelle quantité soustraite: {self.id_lot.quantite_restante}")
-
-        super().save(*args, **kwargs)
+            # Sauvegarder d'abord l'instance
+            super().save(*args, **kwargs)
+            
+            # SOUSTRAIRE la nouvelle quantité
+            self.id_lot.quantite_restante -= self.quantite_sortie
+            self.id_lot.save(update_fields=['quantite_restante'])
+            
+        except Exception as e:
+            print(f"Erreur dans Mouvement_Sortie.save: {e}")
+            raise
 
     def delete(self, *args, **kwargs):
-        # Restaurer la quantité restante si suppression
-        self.id_lot.quantite_restante += self.quantite_sortie
-        self.id_lot.save()
-        super().delete(*args, **kwargs)
+        try:
+            self.id_lot.quantite_restante += self.quantite_sortie
+            self.id_lot.save(update_fields=['quantite_restante'])
+            super().delete(*args, **kwargs)
+        except Exception as e:
+            print(f"Erreur dans Mouvement_Sortie.delete: {e}")
+            raise
 
     class Meta:
         pass
@@ -366,7 +369,48 @@ class Mouvement_Sortie_externe(models.Model):
     )
     client_nom = models.CharField(max_length=200, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
-    
+
+    def save(self, *args, **kwargs):
+        try:
+            # Calculer la valeur de sortie
+            if not self.valeur_sortie and self.quantite_sortie > 0:
+                try:
+                    from .methodes_valorisation import GestionnaireValorisation
+                    self.valeur_sortie = GestionnaireValorisation.calculer_cout_sortie(
+                        self.id_article, self.quantite_sortie
+                    )
+                except:
+                    self.valeur_sortie = self.quantite_sortie * self.id_article.prix_unitaire
+            
+            # Sauvegarder l'instance
+            super().save(*args, **kwargs)
+            
+            # Gérer la mise à jour de la quantité restante
+            if self.pk:
+                try:
+                    original = Mouvement_Sortie_externe.objects.get(pk=self.pk)
+                    if hasattr(original, 'quantite_sortie'):
+                        self.id_lot.quantite_restante += original.quantite_sortie
+                except Mouvement_Sortie_externe.DoesNotExist:
+                    pass
+
+            # Soustraire la nouvelle quantité
+            self.id_lot.quantite_restante -= self.quantite_sortie
+            self.id_lot.save(update_fields=['quantite_restante'])
+            
+        except Exception as e:
+            print(f"Erreur dans Mouvement_Sortie_externe.save: {e}")
+            raise
+
+    def delete(self, *args, **kwargs):
+        try:
+            self.id_lot.quantite_restante += self.quantite_sortie
+            self.id_lot.save(update_fields=['quantite_restante'])
+            super().delete(*args, **kwargs)
+        except Exception as e:
+            print(f"Erreur dans Mouvement_Sortie_externe.delete: {e}")
+            raise
+
 class HistoriqueEmplacement(models.Model):
     id_historique = models.AutoField(primary_key=True)
     emplacement = models.ForeignKey(Emplacement, on_delete=models.CASCADE, related_name='historique')
@@ -408,9 +452,12 @@ class Inventaire(models.Model):
         # unique_together = ['article', 'date_inventaire']  # Un seul inventaire par article par jour
 
     def save(self, *args, **kwargs):
-        # Calcul automatique de l'écart
-        self.ecart = self.quantite_reelle - self.quantite_theorique
-        super().save(*args, **kwargs)
+        try:
+            self.ecart = self.quantite_reelle - self.quantite_theorique
+            super().save(*args, **kwargs)
+        except Exception as e:
+            print(f"Erreur dans Inventaire.save: {e}")
+            raise
 
     def __str__(self):
         return f"{self.article.nom_article} - {self.date_inventaire} (Écart: {self.ecart})"
@@ -495,17 +542,19 @@ class HistoriqueAction(models.Model):
     details_simplifies = models.TextField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        # FIX: Check if utilisateur is a User object
-        if hasattr(self, 'utilisateur') and hasattr(self.utilisateur, 'username'):
-            self.utilisateur = self.utilisateur.username
-        elif not self.utilisateur or self.utilisateur == "Système":
-            self.utilisateur = "Système"
+        try:
+            if hasattr(self, 'utilisateur') and hasattr(self.utilisateur, 'username'):
+                self.utilisateur = self.utilisateur.username
+            elif not self.utilisateur or self.utilisateur == "Système":
+                self.utilisateur = "Système"
 
-        # Generate simplified details if not provided
-        if not self.details_simplifies:
-            self.details_simplifies = self.generer_details_simplifies()
+            if not self.details_simplifies:
+                self.details_simplifies = self.generer_details_simplifies()
 
-        super().save(*args, **kwargs)
+            super().save(*args, **kwargs)
+        except Exception as e:
+            print(f"Erreur dans HistoriqueAction.save: {e}")
+            raise
 
     def generer_details_simplifies(self):
         # Cette méthode est cruciale pour l'affichage côté React
