@@ -426,19 +426,30 @@ class HistoriqueEmplacement(models.Model):
     def __str__(self):
         return f"{self.article.nom_article} -> {self.emplacement.zone_physique} (début: {self.date_debut})"
 
+
 class Inventaire(models.Model):
+    RAISON_ECART_CHOICES = [
+        ('erreur_saisie', 'Erreur de saisie'),
+        ('perte_inventaire', 'Perte inventoriée'),
+        ('casse', 'Casse / Détérioration'),
+        ('vol', 'Vol / Disparition'),
+        ('etiquetage', 'Erreur d\'étiquetage'),
+        ('reception_non_enregistree', 'Réception non enregistrée'),
+        ('sortie_non_enregistree', 'Sortie non enregistrée'),
+        ('defaut_emballage', 'Défaut d\'emballage'),
+        ('retour_client', 'Retour client non comptabilisé'),
+        ('autre', 'Autre'),
+    ]
+    
     id_inventaire = models.AutoField(primary_key=True)
-    article = models.ForeignKey(Article, on_delete=models.CASCADE, db_column='id_article', verbose_name="Article inventorié",default=1)
+    article = models.ForeignKey(Article, on_delete=models.CASCADE, db_column='id_article', verbose_name="Article inventorié", default=1)
     quantite_theorique = models.IntegerField(default=0, verbose_name="Quantité théorique (système)")
     quantite_reelle = models.IntegerField(default=0, verbose_name="Quantité réelle (comptée)")
     ecart = models.IntegerField(default=0, verbose_name="Écart")
+    raison_ecart = models.CharField(max_length=50, choices=RAISON_ECART_CHOICES, null=True, blank=True, verbose_name="Raison de l'écart")
+    commentaire_raison = models.TextField(blank=True, null=True, verbose_name="Commentaire supplémentaire")
     date_inventaire = models.DateField(auto_now_add=True, verbose_name="Date de l'inventaire")
-    responsable = models.ForeignKey(
-        Utilisateur,
-        on_delete=models.CASCADE,
-        null=True,      # ← Ajoutez ceci
-        blank=True      # ← Ajoutez ceci
-    )
+    responsable = models.ForeignKey( Utilisateur, on_delete=models.CASCADE, null=True, blank=True)
     notes = models.TextField(blank=True, null=True, verbose_name="Notes")
     statut = models.CharField(max_length=20, choices=[
         ('brouillon', 'Brouillon'),
@@ -449,7 +460,6 @@ class Inventaire(models.Model):
     class Meta:
         db_table = 'inventaire'
         ordering = ['-date_inventaire']
-        # unique_together = ['article', 'date_inventaire']  # Un seul inventaire par article par jour
 
     def save(self, *args, **kwargs):
         try:

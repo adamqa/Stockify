@@ -176,6 +176,7 @@ class InventaireSerializer(serializers.ModelSerializer):
     article_famille = serializers.CharField(source='article.famille', read_only=True)
     unite_mesure = serializers.CharField(source='article.unite_mesure', read_only=True)
     responsable_nom = serializers.CharField(source='responsable.username', read_only=True)
+    raison_ecart_display = serializers.CharField(source='get_raison_ecart_display', read_only=True)
 
     # Accepte l'ID du responsable directement
     responsable = serializers.PrimaryKeyRelatedField(
