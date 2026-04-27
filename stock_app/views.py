@@ -514,10 +514,11 @@ class DepreciationViewSet(viewsets.ModelViewSet):
 class DashboardStatsView(APIView):
     permission_classes = [IsAuthenticated]
     
-    def get(self, request):
+     def get(self, request):
         total_articles = Article.objects.count()
         low_stock = 0
         total_value = 0
+        
         for article in Article.objects.all():
             qty = article.quantite_stock_actuel()
             if qty <= article.seuil_securite:
@@ -535,6 +536,10 @@ class DashboardStatsView(APIView):
             date_sortie__gte=month_start
         ).aggregate(total=Sum('quantite_sortie'))['total'] or 0
         
+        print(f"DEBUG - Total stock value: {total_value}")  # Debug
+        print(f"DEBUG - Monthly internal: {monthly_internal}")  # Debug
+        print(f"DEBUG - Monthly external: {monthly_external}")  # Debug
+        
         return Response({
             'total_articles': total_articles,
             'low_stock_articles': low_stock,
@@ -543,7 +548,7 @@ class DashboardStatsView(APIView):
             'monthly_internal': monthly_internal,
             'monthly_external': monthly_external
         })
-        
+    
 class TopArticlesView(APIView):
     permission_classes = [IsAuthenticated]
     
