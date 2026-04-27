@@ -16,7 +16,7 @@ from .views import (
     ChartDataView, StockValueTrendView, StorageCapacityView,
     TopArticlesByMovementView, RecentActivityView,
     FournisseurViewSet, CommandeFournisseurViewSet,
-    HistoriqueEmplacementViewSet,
+    HistoriqueEmplacementViewSet, 
 )
 
 router = DefaultRouter()
@@ -47,6 +47,7 @@ urlpatterns = [
     # User management
     path('users/', UserListView.as_view(), name='user_list'),
     path('users/<int:user_id>/', UserDetailView.as_view(), name='user_detail'),
+    path('auth/profile/', UserProfileView.as_view(), name='user-profile'),
     
     # Home/Dashboard
     path('home/', HomeView.as_view(), name='home'),

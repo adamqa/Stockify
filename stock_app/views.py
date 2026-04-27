@@ -188,6 +188,13 @@ class UserListView(APIView):
         users = Utilisateur.objects.all().order_by('-date_joined')
         serializer = UtilisateurSerializer(users, many=True)
         return Response(serializer.data)
+    
+    def post(self, request):
+        serializer = UtilisateurSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(UtilisateurSerializer(user).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserDetailView(APIView):
     permission_classes = [IsAuthenticated, IsResponsableMagasin]
@@ -214,6 +221,9 @@ class UserDetailView(APIView):
     def delete(self, request, user_id):
         try:
             user = Utilisateur.objects.get(id=user_id)
+            # Ne pas supprimer son propre compte
+            if user.id == request.user.id:
+                return Response({'error': 'Vous ne pouvez pas supprimer votre propre compte'}, status=status.HTTP_400_BAD_REQUEST)
             user.delete()
             return Response({'message': 'User deleted successfully'}, status=status.HTTP_200_OK)
         except Utilisateur.DoesNotExist:
