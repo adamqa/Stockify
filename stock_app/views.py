@@ -514,7 +514,7 @@ class DepreciationViewSet(viewsets.ModelViewSet):
 class DashboardStatsView(APIView):
     permission_classes = [IsAuthenticated]
     
-     def get(self, request):
+    def get(self, request):
         total_articles = Article.objects.count()
         low_stock = 0
         total_value = 0
